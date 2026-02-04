@@ -10,6 +10,8 @@
 
 ---
 
+本项目是[qqmusic_decrypt](https://github.com/luyikk/qqmusic_decrypt)的python重写版本，感谢原作者提供的动态插桩思路以及导出函数
+
 ## ⚠️ 重要声明
 
 **本项目仅供学习交流使用，严禁商用！**
