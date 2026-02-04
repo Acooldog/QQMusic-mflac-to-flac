@@ -19,7 +19,7 @@
 - 使用本工具解密的音频文件仅供个人欣赏
 - 请尊重版权，支持正版音乐
 - 本分支使用 PyQt5，请注意 PyQt5 采用 **GPLv3** 或商业许可证双重授权
-- 如果想不受限制分发代码，请前往[master](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console)分支
+- 如果想不受限制分发代码，请前往[master-console](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console)分支
 - 如果您希望闭源或商业使用，需要购买 PyQt5 的商业许可证
 - 更多信息请参考 [PyQt5 官方许可证页面](https://www.riverbankcomputing.com/commercial/license)
   
