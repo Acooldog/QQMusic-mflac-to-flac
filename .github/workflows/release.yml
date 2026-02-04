@@ -33,8 +33,8 @@ jobs:
     # - name: Build .NET application
     #   run: dotnet build -c Release
     
-    - name: Run packaging script
-      run: npm run package
+    # - name: Run packaging script
+    #   run: npm run package
     
     - name: Run Semantic Release
       run: npx semantic-release
