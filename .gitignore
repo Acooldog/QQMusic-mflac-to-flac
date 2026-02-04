@@ -13,3 +13,4 @@ build/
 *.exe
 *.spec
 QQMusic-mflac-to-flac.spec
+horizon-repair-tool.spec
