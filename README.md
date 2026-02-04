@@ -21,6 +21,11 @@
   
 如果帮助到了你，可以去[github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
 
+## 分支说明
+- master-console: 命令行分支，采用[MIT](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console/LICENSE)开源协议
+- master: PyQt5图形化界面分支，采用GPLv3开源协议
+- develop: 开发分支，用于新功能开发
+
 ## 功能特性
 
 - 自动搜索QQ音乐下载目录下的加密文件
@@ -154,8 +159,6 @@ qqmusic_decrypt_python/
     ├── 歌曲2.ogg
     └── ...
 ```
-
-**注意**: `js/` 目录中的JavaScript文件仅作为参考和调试用途，Python代码完全独立，不会读取或使用这些文件。所有JavaScript代码都在运行时动态生成。
 
 ## 架构说明
 
