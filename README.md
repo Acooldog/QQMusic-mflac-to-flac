@@ -23,8 +23,8 @@
 
 ## 分支说明
 - master-console: 命令行分支，采用[MIT](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console/LICENSE)开源协议
-- master: PyQt5图形化界面分支，采用GPLv3开源协议
-- develop: 开发分支，用于新功能开发
+- master: PyQt5图形化界面分支，采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
+- develop: 开发分支，用于新功能开发, 采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
 
 ## 功能特性
 
