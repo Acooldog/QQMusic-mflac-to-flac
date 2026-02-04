@@ -1,7 +1,8 @@
 # QQ音乐解密工具 - Python版本
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+<!-- GPLv3 -->
+![License](https://img.shields.io/badge/License-GPLv3-blue)
 ![GitHub stars](https://img.shields.io/github/stars/yourusername/QQMusic-mflac-to-flac?style=social)
 
 ![Star History Chart](https://api.star-history.com/svg?repos=yourusername/QQMusic-mflac-to-flac&type=Date)
@@ -20,6 +21,11 @@
 - 请尊重版权，支持正版音乐
   
 如果帮助到了你，可以去[github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
+
+## 分支说明
+- master-console: 命令行分支，采用[MIT](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console/LICENSE)开源协议
+- master: PyQt5图形化界面分支，采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
+- develop: 开发分支，用于新功能开发, 采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
 
 ## 功能特性
 
