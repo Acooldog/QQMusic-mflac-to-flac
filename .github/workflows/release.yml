@@ -1,13 +1,19 @@
-name: Build and Release
+name: Build and Release Python Application
 
 on:
   push:
-    branches: [main, test, beta, alpha, master]  # 确保包含所有分支
-    tags: ['v*']
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [created]
 
 jobs:
-  build-and-release:
+  build-windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
     
     steps:
     - name: Checkout code
@@ -15,28 +21,114 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Setup Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'  # 指定您的 Python 版本，如 '3.9', '3.10'
-        cache: 'pip'  # 缓存 pip 依赖
+        python-version: ${{ matrix.python-version }}
     
-    - name: Setup Node.js 22
-      uses: actions/setup-node@v3
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Build with PyInstaller
+      run: |
+        # 查找入口文件
+        if [ -f "main.py" ]; then
+          ENTRY_FILE="main.py"
+        elif [ -f "app.py" ]; then
+          ENTRY_FILE="app.py"
+        elif [ -f "run.py" ]; then
+          ENTRY_FILE="run.py"
+        else
+          # 查找第一个 .py 文件
+          ENTRY_FILE=$(ls *.py | head -1)
+        fi
+        
+        echo "Building from entry file: $ENTRY_FILE"
+        
+        # PyInstaller 构建命令
+        pyinstaller --onefile --noconsole --name "QQMusic-mflac-to-flac" "$ENTRY_FILE"
+    
+    - name: Create release package
+      run: |
+        # 创建发布目录
+        mkdir -p release
+        
+        # 创建包含可执行文件的文件夹结构
+        mkdir -p temp_release
+        copy dist\QQMusic-mflac-to-flac.exe temp_release\
+        
+        # 复制其他必要文件
+        if [ -f "README.md" ]; then copy README.md temp_release\; fi
+        if [ -f "LICENSE" ]; then copy LICENSE temp_release\; fi
+        
+        # 复制 plugins 文件夹（如果存在）
+        if [ -d "plugins" ]; then
+          xcopy /E /I plugins temp_release\plugins
+        fi
+        
+        # 创建压缩包
+        cd temp_release
+        7z a -tzip ..\release\QQMusic-mflac-to-flac.zip *
+        cd ..
+        
+        echo "Release package created: release/QQMusic-mflac-to-flac.zip"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
       with:
-        node-version: '22.21.0'
-        cache: 'npm'
+        name: windows-executable
+        path: |
+          dist/QQMusic-mflac-to-flac.exe
+          release/QQMusic-mflac-to-flac.zip
+        retention-days: 5
+
+  release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     
-    - name: Install npm dependencies
-      run: npm ci
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
     
-    # - name: Build .NET application
-    #   run: dotnet build -c Release
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-executable
+        path: ./artifacts
     
-    # - name: Run packaging script
-    #   run: npm run package
-    
-    - name: Run Semantic Release
-      run: npx semantic-release
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        files: |
+          artifacts/QQMusic-mflac-to-flac.exe
+          artifacts/QQMusic-mflac-to-flac.zip
+        body: |
+          # QQMusic mflac to flac Converter
+          
+          ## Windows 版本
+          
+          包含以下文件：
+          - `QQMusic-mflac-to-flac.exe` - 主程序
+          - `QQMusic-mflac-to-flac.zip` - 完整发布包
+          
+          ## 使用说明
+          
+          1. 下载 `QQMusic-mflac-to-flac.zip`
+          2. 解压到任意目录
+          3. 运行 `QQMusic-mflac-to-flac.exe`
+          
+          ## 特性
+          
+          - 无控制台窗口的单文件程序
+          - 自动识别 mflac 文件
+          - 批量转换支持
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
