@@ -1,11 +1,10 @@
-# QQ音乐解密工具 - Python版本
+# QQ音乐解密工具 - PyQt5版本
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
-<!-- GPLv3 -->
 ![License](https://img.shields.io/badge/License-GPLv3-blue)
-![GitHub stars](https://img.shields.io/github/stars/yourusername/QQMusic-mflac-to-flac?style=social)
+![GitHub stars](https://img.shields.io/github/stars/Acooldog/QQMusic-mflac-to-flac?style=social)
 
-![Star History Chart](https://api.star-history.com/svg?repos=yourusername/QQMusic-mflac-to-flac&type=Date)
+![Star History Chart](https://api.star-history.com/svg?repos=Acooldog/QQMusic-mflac-to-flac&type=Date)
 
 自动解密QQ音乐下载的加密音频文件，将mflac转换为flac，mgg转换为ogg。
 
@@ -19,6 +18,10 @@
 - 请勿将本工具用于任何商业用途
 - 使用本工具解密的音频文件仅供个人欣赏
 - 请尊重版权，支持正版音乐
+- 本分支使用 PyQt5，请注意 PyQt5 采用 **GPLv3** 或商业许可证双重授权
+- 如果想不受限制分发代码，请前往[master](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console)分支
+- 如果您希望闭源或商业使用，需要购买 PyQt5 的商业许可证
+- 更多信息请参考 [PyQt5 官方许可证页面](https://www.riverbankcomputing.com/commercial/license)
   
 如果帮助到了你，可以去[github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
 
@@ -26,6 +29,10 @@
 - master-console: 命令行分支，采用[MIT](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console/LICENSE)开源协议
 - master: PyQt5图形化界面分支，采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
 - develop: 开发分支，用于新功能开发, 采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
+
+## 用户指南
+- 要使用PyQt5图形化界面，请在发行版下载QQMusic-mflac-to-flac.zip
+- 要使用命令行，请在发行版下载QQMusic-mflac-to-flac-console.zip
 
 ## 功能特性
 
@@ -141,8 +148,6 @@ qqmusic_decrypt_python/
     ├── 歌曲2.ogg
     └── ...
 ```
-
-**注意**: `js/` 目录中的JavaScript文件仅作为参考和调试用途，Python代码完全独立，不会读取或使用这些文件。所有JavaScript代码都在运行时动态生成。
 
 ## 架构说明
 
@@ -265,9 +270,16 @@ A: 确保使用的是Windows版本的QQ音乐客户端
 **Q: 提示"未找到所有必要的函数"？**
 A: 可能是QQ音乐版本更新了DLL，程序会列出所有相关导出函数，需要更新函数名
 
-## 许可证
+## 📄 许可证
 
-本项目采用 [MIT License](LICENSE) 开源协议。
+本项目采用 **GPLv3** 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+### PyQt5 依赖说明
+本软件依赖于 PyQt5 库，该库采用双重授权：
+- **GPLv3**：适用于开源项目
+- **商业许可证**：适用于闭源商业项目
+
+使用本软件即表示您同意遵守上述许可证条款。
 
 ## Star History
 
