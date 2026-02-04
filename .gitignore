@@ -23,6 +23,7 @@ mono_crash.*
 [Rr]eleases/
 x64/
 x86/
+[Bb]uild
 [Ww][Ii][Nn]32/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
@@ -366,3 +367,5 @@ FodyWeavers.xsd
 output/
 .venv/
 __pycache__/
+js/
+dist/
