@@ -20,7 +20,7 @@
 - 请尊重版权，支持正版音乐
 - 本分支使用 PyQt5，请注意 PyQt5 采用 **GPLv3** 或商业许可证双重授权
 - 如果想不受限制分发代码，请前往[master-console](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console)分支
-- 如果您希望闭源或商业使用，需要购买 PyQt5 的商业许可证
+- 如果您希望闭源或商业使用，需要购买 PyQt5 的商业许可证，或者使用[master-console](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console)分支
 - 更多信息请参考 [PyQt5 官方许可证页面](https://www.riverbankcomputing.com/commercial/license)
   
 如果帮助到了你，可以去[github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
