@@ -6,9 +6,9 @@ __pycache__/
 output
 node_modules
 js
-dist/
-*.pyc
 
+*.pyc
+dist/
 build/
 *.exe
 *.spec
