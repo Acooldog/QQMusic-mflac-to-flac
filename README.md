@@ -19,6 +19,8 @@
 - 使用本工具解密的音频文件仅供个人欣赏
 - 请尊重版权，支持正版音乐
 
+如果帮助到了你，可以去![github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
+
 ## 功能特性
 
 - 自动搜索QQ音乐下载目录下的加密文件
