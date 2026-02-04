@@ -1,11 +1,28 @@
 # QQ音乐解密工具 - Python版本
 
+![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+![GitHub stars](https://img.shields.io/github/stars/yourusername/QQMusic-mflac-to-flac?style=social)
+
+![Star History Chart](https://api.star-history.com/svg?repos=yourusername/QQMusic-mflac-to-flac&type=Date)
+
 自动解密QQ音乐下载的加密音频文件，将mflac转换为flac，mgg转换为ogg。
+
+---
+
+## ⚠️ 重要声明
+
+**本项目仅供学习交流使用，严禁商用！**
+
+- 本工具仅用于技术研究和个人学习目的
+- 请勿将本工具用于任何商业用途
+- 使用本工具解密的音频文件仅供个人欣赏
+- 请尊重版权，支持正版音乐
 
 ## 功能特性
 
 - 自动搜索QQ音乐下载目录下的加密文件
-- 使用Frida动态插桩技术调用QQ音乐官方解密函数
+- 使用Frida动态插桩技术调用QQ音乐官方解密函数 优点: QQ音乐官方修改静态密钥，无需维护
 - 支持mflac（加密FLAC）和mgg（加密OGG）格式
 - 自动转换为标准flac和ogg格式
 - 输出到当前目录的output文件夹
@@ -28,6 +45,57 @@ pip install -r requirements.txt
 ```bash
 pip install frida>=16.0.0
 ```
+
+## 部署指南
+
+### 基本部署
+
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/yourusername/QQMusic-mflac-to-flac.git
+   cd QQMusic-mflac-to-flac
+   ```
+
+2. **安装依赖**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **启动 QQ 音乐**
+   - 确保已安装 Windows 版 QQ 音乐客户端
+   - 启动 QQ 音乐并登录账号
+
+4. **运行程序**
+   ```bash
+   python src/UI/MainWindow/mainWindow.py
+   ```
+
+### 设置保存问题解决方案
+
+**已知问题**：在某些环境下，GUI 程序的设置可能无法保存到 `plugins/plugins.json`。
+
+**临时解决方案**：
+
+如果遇到设置无法保存的情况，可以在项目根目录下手动创建 `plugins/plugins.json` 文件，内容如下：
+
+```json
+{
+    "input": "",
+    "output": "",
+    "del": false,
+    "wheel": false
+}
+```
+
+参数说明：
+- `input`: QQ 音乐下载目录路径（如：`C:\Users\你的用户名\Music\VipSongsDownload`）
+- `output`: 解密文件输出目录路径
+- `del`: 是否在解密后删除原始加密文件（`true` 或 `false`）
+- `wheel`: 是否循环运行（`true` 或 `false`）
+
+**提示**：该问题将在后续版本中修复，届时设置将能正常保存。
+
+---
 
 ## 使用方法
 
@@ -159,9 +227,16 @@ for file in qq_music_dir.glob("*.mflac"):
 ## 注意事项
 
 - 确保QQ音乐正在运行
-- 请勿用于商业用途
-- 仅供学习和研究使用
+- **严禁商用！仅供学习交流使用**
+- 解密后的音频文件仅限个人欣赏
+- 请尊重版权，支持正版音乐
 - 不同版本的QQ音乐可能使用不同的DLL导出函数名
+
+---
+
+## 免责声明
+
+本工具仅供学习交流使用，不得用于任何商业用途。使用者需自行承担使用本工具的一切后果，开发者不承担任何责任。
 
 ## 常见问题
 
@@ -179,5 +254,13 @@ A: 可能是QQ音乐版本更新了DLL，程序会列出所有相关导出函数
 
 ## 许可证
 
-仅供学习交流使用，请勿用于非法用途。
+本项目采用 [MIT License](LICENSE) 开源协议。
+
+## Star History
+
+如果觉得这个项目有帮助，请给个 ⭐️ Star 支持一下！
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
 
