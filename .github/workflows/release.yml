@@ -30,8 +30,8 @@ jobs:
     - name: Install npm dependencies
       run: npm ci
     
-    - name: Build .NET application
-      run: dotnet build -c Release
+    # - name: Build .NET application
+    #   run: dotnet build -c Release
     
     - name: Run packaging script
       run: npm run package
