@@ -2,7 +2,7 @@ name: Build and Release
 
 on:
   push:
-    branches: [main, test, beta, alpha]  # 确保包含所有分支
+    branches: [main, test, beta, alpha, master]  # 确保包含所有分支
     tags: ['v*']
 
 jobs:
