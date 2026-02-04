@@ -1,0 +1,42 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, test, beta, alpha]  # 确保包含所有分支
+    tags: ['v*']
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'  # 指定您的 Python 版本，如 '3.9', '3.10'
+        cache: 'pip'  # 缓存 pip 依赖
+    
+    - name: Setup Node.js 22
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22.21.0'
+        cache: 'npm'
+    
+    - name: Install npm dependencies
+      run: npm ci
+    
+    - name: Build .NET application
+      run: dotnet build -c Release
+    
+    - name: Run packaging script
+      run: npm run package
+    
+    - name: Run Semantic Release
+      run: npx semantic-release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

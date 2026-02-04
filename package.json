@@ -1,0 +1,13 @@
+{
+  "name": "QQMusic-mflac-to-flac",
+  "version": "1.0.0",
+  "scripts": {
+    "package": "node scripts/package.js",
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "semantic-release": "^24.0.0",
+    "@semantic-release/exec": "^6.0.0",
+    "@semantic-release/git": "^10.0.0"
+  }
+}
