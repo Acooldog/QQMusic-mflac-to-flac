@@ -32,21 +32,10 @@
 
 ## 环境要求
 
-- Python 3.7+
+- Python 3.11.x
 - QQ音乐客户端（Windows版本）必须处于运行状态
 - Frida工具包
 
-## 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-或手动安装：
-
-```bash
-pip install frida>=16.0.0
-```
 
 ## 部署指南
 
@@ -74,7 +63,7 @@ pip install frida>=16.0.0
 
 4. **运行程序**
    ```bash
-   python src/UI/MainWindow/mainWindow.py
+   python main.py
    ```
 
 ### 设置保存问题解决方案
@@ -271,3 +260,4 @@ A: 可能是QQ音乐版本更新了DLL，程序会列出所有相关导出函数
 
 欢迎提交 Issue 和 Pull Request！
 
+1
