@@ -33,7 +33,7 @@
 ## 环境要求
 
 - Python 3.7+
-- QQ音乐客户端（Windows版本）
+- QQ音乐客户端（Windows版本）必须处于运行状态
 - Frida工具包
 
 ## 安装依赖
@@ -54,7 +54,12 @@ pip install frida>=16.0.0
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/yourusername/QQMusic-mflac-to-flac.git
+   git clone https://github.com/Acooldog/QQMusic-mflac-to-flac
+   cd QQMusic-mflac-to-flac
+   ```
+ - **国内用户可以使用国内镜像**：
+   ```bash
+   git clone https://gitee.com/daoges_x/QQMusic-mflac-to-flac.git
    cd QQMusic-mflac-to-flac
    ```
 
