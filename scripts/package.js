@@ -7,7 +7,7 @@ const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const version = packageJson.version;
 
 // 配置变量
-const APP_NAME = 'QQMusic-mflac-to-flac';  // EXE名称变量
+const APP_NAME = 'QQMusic-mflac-to-flac-console';  // EXE名称变量
 const APP_VERSION = version;                // 版本号
 const SOURCE_DIR = 'src';                   // Python 源码目录
 const DIST_DIR = 'dist';                    // PyInstaller 输出目录
@@ -139,7 +139,7 @@ async function build() {
     const pluginsExist = fs.existsSync(pluginsDir);
     
     // 构建 PyInstaller 命令
-    let pyinstallerCmd = `"${venvPython}" -m PyInstaller --onefile --noconsole --name "${APP_NAME}"`;
+    let pyinstallerCmd = `"${venvPython}" -m PyInstaller --onefile --name "${APP_NAME}"`;
     
     // 添加 plugins 文件夹（如果存在）
     if (pluginsExist) {
@@ -160,20 +160,20 @@ async function build() {
     });
     
     // 添加 hidden-imports 用于常见库
-    const hiddenImports = [
-        'PyQt5.QtCore',
-        'PyQt5.QtGui',
-        'PyQt5.QtWidgets',
-        'PyQt5.sip',
-        'numpy',
-        'pandas',
-        'PIL',
-        'PIL._imaging'
-    ];
+    // const hiddenImports = [
+    //     'PyQt5.QtCore',
+    //     'PyQt5.QtGui',
+    //     'PyQt5.QtWidgets',
+    //     'PyQt5.sip',
+    //     'numpy',
+    //     'pandas',
+    //     'PIL',
+    //     'PIL._imaging'
+    // ];
     
-    hiddenImports.forEach(module => {
-        pyinstallerCmd += ` --hidden-import ${module}`;
-    });
+    // hiddenImports.forEach(module => {
+    //     pyinstallerCmd += ` --hidden-import ${module}`;
+    // });
     
     // 添加入口文件
     pyinstallerCmd += ` "${entryFile}"`;

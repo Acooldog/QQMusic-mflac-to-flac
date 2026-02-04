@@ -1,6 +1,6 @@
 {
-    "input": "",
-    "output": "",
-    "del": false,
+    "input": "C:\\Users\\01080\\Music\\VipSongsDownload",
+    "output": "O:\\A_python\\A_QQd\\output",
+    "del": true,
     "wheel": false
 }

@@ -27,8 +27,9 @@
 - 使用Frida动态插桩技术调用QQ音乐官方解密函数 优点: QQ音乐官方修改静态密钥，无需维护
 - 支持mflac（加密FLAC）和mgg（加密OGG）格式
 - 自动转换为标准flac和ogg格式
-- 输出到当前目录的output文件夹
-- Python封装类，易于使用和维护
+- 支持交互式模式和命令行模式
+- 支持循环监控模式，自动解密新下载的文件
+- 配置自动保存，下次启动可快速加载
 
 ## 环境要求
 
@@ -63,37 +64,24 @@
 
 4. **运行程序**
    ```bash
+   # 交互式模式（推荐首次使用）
    python main.py
+
+   # 命令行模式
+   python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output"
+
+   # 解密后删除原文件
+   python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -d
+
+   # 循环监控模式（自动解密新下载的文件）
+   python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -l
    ```
 
-### 设置保存问题解决方案
 
-**已知问题**：在某些环境下，GUI 程序的设置可能无法保存到 `plugins/plugins.json`。
-
-**临时解决方案**：
-
-如果遇到设置无法保存的情况，可以在项目根目录下手动创建 `plugins/plugins.json` 文件，内容如下：
-
-```json
-{
-    "input": "",
-    "output": "",
-    "del": false,
-    "wheel": false
-}
-```
-
-参数说明：
-- `input`: QQ 音乐下载目录路径（如：`C:\Users\你的用户名\Music\VipSongsDownload`）
-- `output`: 解密文件输出目录路径
-- `del`: 是否在解密后删除原始加密文件（`true` 或 `false`）
-- `wheel`: 是否循环运行（`true` 或 `false`）
-
-**提示**：该问题将在后续版本中修复，届时设置将能正常保存。
-
----
 
 ## 使用方法
+
+### 方式一：交互式模式（推荐首次使用）
 
 1. **确保QQ音乐正在运行**
    - 启动QQ音乐客户端
@@ -104,22 +92,64 @@
    python main.py
    ```
 
-3. **查看输出**
-   - 解密后的文件会保存在 `output` 目录下
+3. **按照提示输入**
+   - 输入QQ音乐下载目录路径
+   - 输入输出目录路径
+   - 选择是否删除原文件
+   - 选择是否开启循环监控模式
+
+4. **查看输出**
+   - 解密后的文件会保存在指定的输出目录
    - mflac文件 → flac格式
    - mgg文件 → ogg格式
+
+### 方式二：命令行模式
+
+```bash
+# 基本用法
+python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output"
+
+# 解密后删除原文件
+python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -d
+
+# 循环监控模式（自动解密新下载的文件）
+python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -l
+
+# 查看帮助
+python main.py --help
+```
+
+### 命令行参数说明
+
+| 参数 | 简写 | 说明 |
+|------|------|------|
+| --input | -i | QQ音乐下载目录路径 |
+| --output | -o | 解密文件输出目录路径 |
+| --delete | -d | 解密后删除原音频文件 |
+| --loop | -l | 循环监控模式 |
+| --help | -h | 显示帮助信息 |
 
 ## 目录结构
 
 ```
 qqmusic_decrypt_python/
 ├── main.py                 # Python主程序（入口）
-├── qqmusic_decrypt.py      # QQ音乐解密器类（核心逻辑）
-├── requirements.txt        # Python依赖
-├── README.md              # 说明文档
-├── js/                    # JavaScript参考代码（仅作参考，不会被Python调用）
-│   └── hook_qq_music.js   # JavaScript Hook脚本（原始版本，供调试参考）
-└── output/                # 输出目录（程序自动创建）
+├── src/                   # 源代码目录
+│   ├── Manager/           # 核心逻辑模块
+│   │   └── qqmusic_decrypt.py  # QQ音乐解密器类
+│   ├── UI/                # UI模块（已废弃，保留用于参考）
+│   │   └── MainWindow/
+│   │       └── MainWindow.py
+│   ├── Helper/            # 辅助工具
+│   ├── backupFuc/         # 备份功能
+│   └── upRequirements/    # 依赖更新工具
+├── requirements.txt       # Python依赖
+├── plugins/               # 配置文件目录（自动创建）
+│   └── plugins.json       # 用户配置文件
+├── README.md             # 说明文档
+├── js/                   # JavaScript参考代码（仅作参考）
+│   └── hook_qq_music.js  # JavaScript Hook脚本
+└── output/               # 输出目录（程序自动创建）
     ├── 歌曲1.flac
     ├── 歌曲2.ogg
     └── ...
@@ -134,7 +164,7 @@ qqmusic_decrypt_python/
 `qqmusic_decrypt.py` 中的 `QQMusicDecryptor` 类封装了所有解密逻辑：
 
 ```python
-from qqmusic_decrypt import QQMusicDecryptor
+from src.Manager.qqmusic_decrypt import QQMusicDecryptor
 
 # 初始化解密器
 decryptor = QQMusicDecryptor(session)
@@ -189,7 +219,7 @@ success = decryptor.decrypt(src_file, dest_file)
 
 ```python
 import frida
-from qqmusic_decrypt import QQMusicDecryptor
+from src.Manager.qqmusic_decrypt import QQMusicDecryptor
 
 # 附加到QQ音乐进程
 device = frida.get_local_device()
@@ -205,7 +235,7 @@ decryptor.decrypt("C:/Users/xxx/Music/VipSongsDownload/歌曲.mflac", "output/�
 ### 自定义集成
 
 ```python
-from qqmusic_decrypt import QQMusicDecryptor
+from src.Manager.qqmusic_decrypt import QQMusicDecryptor
 from pathlib import Path
 
 # ... Frida初始化代码 ...
@@ -259,5 +289,3 @@ A: 可能是QQ音乐版本更新了DLL，程序会列出所有相关导出函数
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
-
-1
