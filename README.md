@@ -6,7 +6,7 @@
 
 ![Star History Chart](https://api.star-history.com/svg?repos=Acooldog/QQMusic-mflac-to-flac&type=Date)
 
-自动解密QQ音乐下载的加密音频文件，将mflac转换为flac，mgg转换为ogg。
+自动解密QQ音乐下载的加密音频文件，支持将 mflac/mgg/mmp4 转换为可播放音频格式。
 
 ---
 
@@ -38,8 +38,10 @@
 
 - 自动搜索QQ音乐下载目录下的加密文件
 - 使用Frida动态插桩技术调用QQ音乐官方解密函数 优点: QQ音乐官方修改静态密钥，无需维护
-- 支持mflac（加密FLAC）和mgg（加密OGG）格式
-- 自动转换为标准flac和ogg格式
+- 支持 mflac（加密FLAC）、mgg（加密OGG）、mmp4（加密MP4）格式
+- 默认输出映射：mflac->flac、mgg->ogg、mmp4->m4a
+- 支持自定义输出格式：flac/ogg/m4a/aac/mp3/wav
+- 检测到 FFmpeg 时支持真实转码；无 FFmpeg 时可选择下载或仅解密不转码
 - 支持交互式模式和命令行模式
 - 支持循环监控模式，自动解密新下载的文件
 - 配置自动保存，下次启动可快速加载
@@ -49,6 +51,7 @@
 - Python 3.11.x
 - QQ音乐客户端（Windows版本）必须处于运行状态
 - Frida工具包
+- （可选）FFmpeg：当目标格式与默认格式不一致时用于真实转码
 
 
 ## 部署指南
@@ -87,6 +90,9 @@
    # 命令行模式
    python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output"
 
+   # 命令行 + 自定义输出格式
+   python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" --format-mflac mp3 --format-mgg ogg --format-mmp4 aac
+
    # 解密后删除原文件
    python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -d
 
@@ -118,11 +124,13 @@
    - 输入输出目录路径
    - 选择是否删除原文件
    - 选择是否开启循环监控模式
+   - 可选配置 mflac/mgg/mmp4 的目标输出格式
 
 4. **查看输出**
    - 解密后的文件会保存在指定的输出目录
    - mflac文件 → flac格式
    - mgg文件 → ogg格式
+   - mmp4文件 → m4a格式（默认）
 
 ### 方式二：命令行模式
 
@@ -136,6 +144,9 @@ python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" 
 # 循环监控模式（自动解密新下载的文件）
 python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" -l
 
+# 自定义输出格式
+python main.py -i "C:\Users\你的用户名\Music\VipSongsDownload" -o "output" --format-mflac mp3 --format-mgg wav --format-mmp4 aac
+
 # 查看帮助
 python main.py --help
 ```
@@ -148,6 +159,9 @@ python main.py --help
 | --output | -o | 解密文件输出目录路径 |
 | --delete | -d | 解密后删除原音频文件 |
 | --loop | -l | 循环监控模式 |
+| --format-mflac | - | mflac 目标输出格式（默认 flac） |
+| --format-mgg | - | mgg 目标输出格式（默认 ogg） |
+| --format-mmp4 | - | mmp4 目标输出格式（默认 m4a） |
 | --help | -h | 显示帮助信息 |
 
 ### 运行目录配置与日志
@@ -156,6 +170,7 @@ python main.py --help
 - 程序会在当前运行目录自动创建 `_log/<YYYY-M-D>/` 目录
 - 每次运行会生成一个独立日志文件，例如：`_log/2026-3-4/run_14-22-31_pid3468.log`
 - 日志会同时输出到终端和日志文件，方便排查问题与提交 GitHub issue
+- `plugins.json` 中会保存格式规则（`format_rules`）与支持格式白名单（`format_whitelist`）
 
 ### 自动发布说明
 
@@ -173,6 +188,8 @@ python main.py --help
 qqmusic_decrypt_python/
 ├── main.py                 # Python主程序（入口）
 ├── src/                   # 源代码目录
+│   ├── Application/       # 应用服务层（任务编排、格式策略、配置服务）
+│   ├── Infrastructure/    # 基础设施层（解密网关、转码、文件与配置仓储）
 │   ├── Manager/           # 核心逻辑模块
 │   │   └── qqmusic_decrypt.py  # QQ音乐解密器类
 │   ├── UI/                # UI模块（已废弃，保留用于参考）
@@ -190,6 +207,7 @@ qqmusic_decrypt_python/
 └── output/               # 输出目录（程序自动创建）
     ├── 歌曲1.flac
     ├── 歌曲2.ogg
+    ├── 歌曲3.m4a
     └── ...
 ```
 
@@ -242,11 +260,13 @@ success = decryptor.decrypt(src_file, dest_file)
 包含加密文件：
 - `歌手-歌名.mflac`  # 加密的FLAC文件（VIP歌曲）
 - `歌手-歌名.mgg`    # 加密的OGG文件
+- `歌手-歌名.mmp4`   # 加密的MP4音频文件
 
 ## 技术栈
 
 - **Python 3.7+**: 主程序逻辑和类封装
 - **Frida 16.0+**: 动态插桩框架
+- **FFmpeg（可选）**: 目标格式与默认格式不一致时用于真实转码
 - **JavaScript**: Hook脚本（通过Frida注入到QQ音乐进程）
 
 ## 代码示例
@@ -308,7 +328,10 @@ for file in qq_music_dir.glob("*.mflac"):
 A: 确保QQ音乐客户端已启动并且进程名包含"qqmusic"
 
 **Q: 解密后的文件无法播放？**
-A: 确保你的播放器支持flac/ogg格式
+A: 确保你的播放器支持flac/ogg/m4a/aac/mp3/wav格式
+
+**Q: 我设置了 mflac->mp3，但结果仍然是 flac？**
+A: 这是因为系统未安装 FFmpeg 或你选择了“本次仅解密不转码”。安装 FFmpeg 后重试即可真实转码。
 
 **Q: 找不到QQMusicCommon.dll？**
 A: 确保使用的是Windows版本的QQ音乐客户端
