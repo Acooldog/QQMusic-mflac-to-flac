@@ -13,6 +13,7 @@ const SOURCE_DIR = 'src';                   // Python 源码目录
 const DIST_DIR = 'dist';                    // PyInstaller 输出目录
 const RELEASE_DIR = 'release';             // 发布目录
 const EXE_NAME = `${APP_NAME}.exe`;        // 最终exe名称
+const DIST_APP_DIR = path.join(DIST_DIR, APP_NAME); // onedir目录
 // const ZIP_NAME = `${APP_NAME}-v${APP_VERSION}.zip`;  // 压缩包名称
 const ZIP_NAME = `${APP_NAME}.zip`;  // 压缩包名称
 
@@ -139,7 +140,7 @@ async function build() {
     const pluginsExist = fs.existsSync(pluginsDir);
     
     // 构建 PyInstaller 命令
-    let pyinstallerCmd = `"${venvPython}" -m PyInstaller --onefile --name "${APP_NAME}"`;
+    let pyinstallerCmd = `"${venvPython}" -m PyInstaller --onedir --name "${APP_NAME}"`;
     
     // 添加 plugins 文件夹（如果存在）
     if (pluginsExist) {
@@ -190,7 +191,7 @@ async function build() {
     }
     
     // 7. 检查输出文件
-    const exePath = path.join(DIST_DIR, EXE_NAME);
+    const exePath = path.join(DIST_APP_DIR, EXE_NAME);
     if (!fs.existsSync(exePath)) {
         console.error(`❌ 错误: PyInstaller 输出文件不存在: ${exePath}`);
         process.exit(1);
@@ -204,16 +205,16 @@ async function build() {
     
     // 9. 创建发布包
     console.log(`📦 创建发布压缩包: ${ZIP_NAME}`);
-    await createReleasePackage(exePath);
+    await createReleasePackage(DIST_APP_DIR);
     
     // 10. 完成
     console.log('✨ 构建完成！');
-    console.log(`📁 输出文件: ${path.join(DIST_DIR, EXE_NAME)}`);
+    console.log(`📁 输出目录: ${DIST_APP_DIR}`);
     console.log(`📦 发布包: ${path.join(RELEASE_DIR, ZIP_NAME)}`);
 }
 
 // 创建发布包
-async function createReleasePackage(exePath) {
+async function createReleasePackage(distAppDir) {
     // 清理旧版本文件
     if (fs.existsSync(RELEASE_DIR)) {
         const files = fs.readdirSync(RELEASE_DIR);
@@ -235,9 +236,10 @@ async function createReleasePackage(exePath) {
     }
     fs.mkdirSync(tempDir, { recursive: true });
     
-    // 复制可执行文件
-    fs.copyFileSync(exePath, path.join(tempDir, EXE_NAME));
-    
+    // 复制 onedir 构建目录
+    const releaseAppDir = path.join(tempDir, APP_NAME);
+    fs.cpSync(distAppDir, releaseAppDir, { recursive: true });
+
     // 复制 README.md
     if (fs.existsSync('README.md')) {
         fs.copyFileSync('README.md', path.join(tempDir, 'README.md'));
@@ -247,14 +249,15 @@ async function createReleasePackage(exePath) {
     const configText = `# ${APP_NAME} v${APP_VERSION}
 
     ## 使用说明
-    1. 直接运行 ${EXE_NAME} 即可
-    2. 如果需要配置文件，请查看同目录下的 config.ini（如有）
+    1. 解压后进入 ${APP_NAME} 文件夹
+    2. 运行 ${EXE_NAME}
 
     ## 构建信息
     - 构建时间: ${new Date().toLocaleString()}
     - 程序名称: ${APP_NAME}
     - 版本: v${APP_VERSION}
-    - 打包方式: PyInstaller (无控制台窗口)
+    - 打包方式: PyInstaller onedir（外部依赖文件夹）
+    - 可执行文件: ${APP_NAME}\\${EXE_NAME}
     `;
     
     fs.writeFileSync(path.join(tempDir, 'BUILD_INFO.txt'), configText);

@@ -3,6 +3,41 @@ from src.Manager.qqmusic_decrypt import QQMusicDecryptor
 import os
 import frida
 import hashlib
+import shutil
+import tempfile
+
+
+def is_ascii_path(path: str) -> bool:
+    try:
+        path.encode("ascii")
+        return True
+    except Exception:
+        return False
+
+
+def pick_safe_tmp_dir(output_dir: str) -> str:
+    abs_output_dir = os.path.abspath(output_dir) if output_dir else output_dir
+    drive, _ = os.path.splitdrive(abs_output_dir)
+
+    candidates = []
+    if drive:
+        candidates.append(os.path.join(drive + os.sep, "_qqmusic_tmp"))
+
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    candidates.append(os.path.join(project_root, "_qqmusic_tmp"))
+    candidates.append(tempfile.gettempdir())
+
+    for candidate in candidates:
+        if not candidate or not is_ascii_path(candidate):
+            continue
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            return candidate
+        except Exception:
+            continue
+
+    print(f"[!] 警告: 未找到可用的ASCII临时目录，回退到输出目录: {output_dir}")
+    return output_dir
 
 
 def Decryptor_main(input_dir="", output_dir="", del_original=False):
@@ -62,6 +97,9 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
     print(f"[*] 输出目录: {output_dir_path}")
+    tmp_base_dir = pick_safe_tmp_dir(output_dir_path)
+    if tmp_base_dir != output_dir_path:
+        print(f"[*] 使用临时目录写入: {tmp_base_dir}")
 
     # 遍历QQ音乐下载目录中的文件
     processed_count = 0
@@ -97,16 +135,22 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
 
             # 生成MD5哈希作为临时文件名
             md5_hash = hashlib.md5(new_file_name.encode()).hexdigest()
-            tmp_file_path = os.path.join(output_dir_path, md5_hash)
+            tmp_file_path = os.path.join(tmp_base_dir, md5_hash)
 
             try:
                 # 调用解密器进行解密
                 success = decryptor.decrypt(file_path, tmp_file_path)
 
                 if success:
-                    # 重命名临时文件为最终文件名
-                    os.rename(tmp_file_path, new_file_path)
-                    print(f"[*] 处理文件: {new_file_path} 完成")
+                    # 将临时文件移动为最终文件名
+                    try:
+                        shutil.move(tmp_file_path, new_file_path)
+                        print(f"[*] 处理文件: {new_file_path} 完成")
+                    except Exception as e:
+                        print(f"[!] 移动临时文件失败: {tmp_file_path} -> {new_file_path}, {e}")
+                        if os.path.exists(tmp_file_path):
+                            os.remove(tmp_file_path)
+                        continue
 
                     # 如果开启删除原文件
                     if del_original:

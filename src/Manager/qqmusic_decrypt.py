@@ -5,7 +5,47 @@
 
 import os
 import hashlib
+import shutil
+import tempfile
+import logging
+import time
 import frida
+
+
+logger = logging.getLogger("qqmusic_decrypt.manager")
+
+
+def is_ascii_path(path: str) -> bool:
+    try:
+        path.encode("ascii")
+        return True
+    except Exception:
+        return False
+
+
+def pick_safe_tmp_dir(output_dir: str) -> str:
+    abs_output_dir = os.path.abspath(output_dir) if output_dir else output_dir
+    drive, _ = os.path.splitdrive(abs_output_dir)
+
+    candidates = []
+    if drive:
+        candidates.append(os.path.join(drive + os.sep, "_qqmusic_tmp"))
+
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    candidates.append(os.path.join(project_root, "_qqmusic_tmp"))
+    candidates.append(tempfile.gettempdir())
+
+    for candidate in candidates:
+        if not candidate or not is_ascii_path(candidate):
+            continue
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            return candidate
+        except Exception:
+            continue
+
+    logger.warning("未找到可用的ASCII临时目录，回退到输出目录: %s", output_dir)
+    return output_dir
 
 
 class QQMusicDecryptor:
@@ -24,7 +64,7 @@ class QQMusicDecryptor:
 
     def _initialize_functions(self):
         """查找并初始化QQMusicCommon.dll中的解密函数"""
-        print("[*] 正在查找QQMusicCommon.dll...")
+        logger.info("正在查找QQMusicCommon.dll...")
 
         # 由于Session对象没有get_module_by_name方法，我们需要在JavaScript中查找模块
         # 创建一个临时脚本来枚举模块和导出函数
@@ -54,33 +94,41 @@ class QQMusicDecryptor:
         export_functions = []
 
         def on_message(message, data):
-            if message['type'] == 'send':
-                payload = message['payload']
-                if payload['type'] == 'found_module':
+            msg_type = message.get("type")
+            if msg_type == "send":
+                payload = message.get("payload", {})
+                if payload.get('type') == 'found_module':
                     module_info['base'] = int(payload['base'], 16)
                     module_info['size'] = payload['size']
-                elif payload['type'] == 'exports':
+                elif payload.get('type') == 'exports':
                     for exp in payload['data']:
                         exp['address'] = int(exp['address'], 16)
                         export_functions.append(exp)
+                elif payload.get("type") == "error":
+                    logger.error("Frida模块枚举错误: %s", payload.get("message"))
+                else:
+                    logger.debug("Frida消息: %s", payload)
+            elif msg_type == "error":
+                logger.error("Frida脚本错误: %s", message.get("stack", message))
+            else:
+                logger.debug("Frida脚本消息: %s", message)
 
         script.on('message', on_message)
         script.load()
 
         # 等待脚本执行
-        import time
         time.sleep(0.5)
 
         if not module_info:
             raise RuntimeError(f"未找到{self.target_dll}")
 
-        print(f"[*] 找到{self.target_dll} @ {hex(module_info['base'])}")
-        print(f"[*] 正在查找相关导出函数...")
+        logger.info("找到%s @ %s", self.target_dll, hex(module_info['base']))
+        logger.info("正在查找相关导出函数...")
 
         if not export_functions:
             raise RuntimeError("未找到任何EncAndDesMediaFile相关函数")
 
-        print(f"[*] 找到 {len(export_functions)} 个相关函数")
+        logger.info("找到 %s 个相关函数", len(export_functions))
 
         # 可能的函数名列表（考虑不同编译器版本）
         possible_names = {
@@ -118,7 +166,7 @@ class QQMusicDecryptor:
                 for possible_name in possible_names['constructor']:
                     if name == possible_name:
                         self.functions['constructor'] = address
-                        print(f"[*] 找到构造函数: {name} @ {hex(address)}")
+                        logger.info("找到构造函数: %s @ %s", name, hex(address))
                         break
 
             # 检查析构函数
@@ -126,7 +174,7 @@ class QQMusicDecryptor:
                 for possible_name in possible_names['destructor']:
                     if name == possible_name:
                         self.functions['destructor'] = address
-                        print(f"[*] 找到析构函数: {name} @ {hex(address)}")
+                        logger.info("找到析构函数: %s @ %s", name, hex(address))
                         break
 
             # 检查Open函数
@@ -134,7 +182,7 @@ class QQMusicDecryptor:
                 for possible_name in possible_names['open']:
                     if name == possible_name:
                         self.functions['open'] = address
-                        print(f"[*] 找到Open函数: {name} @ {hex(address)}")
+                        logger.info("找到Open函数: %s @ %s", name, hex(address))
                         break
 
             # 检查GetSize函数
@@ -142,7 +190,7 @@ class QQMusicDecryptor:
                 for possible_name in possible_names['getSize']:
                     if name == possible_name:
                         self.functions['getSize'] = address
-                        print(f"[*] 找到GetSize函数: {name} @ {hex(address)}")
+                        logger.info("找到GetSize函数: %s @ %s", name, hex(address))
                         break
 
             # 检查Read函数
@@ -150,7 +198,7 @@ class QQMusicDecryptor:
                 for possible_name in possible_names['read']:
                     if name == possible_name:
                         self.functions['read'] = address
-                        print(f"[*] 找到Read函数: {name} @ {hex(address)}")
+                        logger.info("找到Read函数: %s @ %s", name, hex(address))
                         break
 
         # 检查是否所有函数都找到了
@@ -160,8 +208,8 @@ class QQMusicDecryptor:
         if missing:
             raise RuntimeError(f"未找到所有必要的函数: {', '.join(missing)}")
 
-        print("[*] 所有函数都已找到！")
-        print("[*] 创建解密脚本...")
+        logger.info("所有函数都已找到！")
+        logger.info("创建解密脚本...")
 
         # 创建解密脚本
         self._create_decrypt_script()
@@ -242,12 +290,19 @@ class QQMusicDecryptor:
 
         # 定义消息处理器
         def on_message(message, data):
-            if message["type"] == "send":
-                print(f"- {message['payload']}")
+            msg_type = message.get("type")
+            if msg_type == "send":
+                logger.info("[Frida] %s", message.get("payload"))
+            elif msg_type == "error":
+                logger.error("[Frida] %s", message.get("stack", message))
+            elif msg_type == "log":
+                logger.info("[Frida/log] %s", message.get("payload"))
+            else:
+                logger.debug("[Frida/other] %s", message)
 
         self.decrypt_script.on("message", on_message)
         self.decrypt_script.load()
-        print("[*] 解密脚本加载成功！")
+        logger.info("解密脚本加载成功！")
 
     def decrypt(self, src_file, dest_file):
         """解密QQ音乐加密文件
@@ -264,10 +319,8 @@ class QQMusicDecryptor:
             result = self.decrypt_script.exports_sync.decrypt(
                 src_file, dest_file)
             return result
-        except Exception as e:
-            print(f"[!] 解密出错: {e}")
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            logger.exception("解密出错: src=%s, dest=%s", src_file, dest_file)
             return False
 
 
@@ -279,15 +332,16 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
         output_dir: 输出目录
         del_original: 是否删除原始加密文件（.mflac/.mgg）
     """
-    print(f"[*] 输入目录: {input_dir}")
-    print(f"[*] 输出目录: {output_dir}")
-    print(f"[*] 删除原文件: {del_original}")
+    start_time = time.perf_counter()
+    logger.info("输入目录: %s", input_dir)
+    logger.info("输出目录: %s", output_dir)
+    logger.info("删除原文件: %s", del_original)
 
     # 获取Frida版本和本地设备
-    print(f"[*] Frida version: {frida.__version__}")
+    logger.info("Frida version: %s", frida.__version__)
     device_manager = frida.get_device_manager()
     device = device_manager.get_local_device()
-    print(f"[*] Device name: {device.name}")
+    logger.info("Device name: %s", device.name)
 
     # 查找QQ音乐进程
     try:
@@ -299,7 +353,7 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
         if not qq_music_process:
             raise RuntimeError("请先启动QQ音乐")
 
-        print(f"[*] 找到QQ音乐进程: PID={qq_music_process.pid}")
+        logger.info("找到QQ音乐进程: PID=%s", qq_music_process.pid)
     except Exception as e:
         raise RuntimeError(f"查找QQ音乐进程失败: {e}")
 
@@ -309,10 +363,8 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
     # 初始化解密器（会自动查找并加载所需的函数）
     try:
         decryptor = QQMusicDecryptor(session)
-    except Exception as e:
-        print(f"[!] 初始化解密器失败: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("初始化解密器失败")
         return
 
     # 构造QQ音乐下载目录路径
@@ -321,17 +373,21 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
     if not os.path.exists(qq_music_dir):
         raise RuntimeError(f"QQ音乐下载目录不存在: {qq_music_dir}")
 
-    print(f"[*] QQ音乐目录: {qq_music_dir}")
+    logger.info("QQ音乐目录: %s", qq_music_dir)
 
     # 创建输出目录
     output_dir_path = output_dir
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
-    print(f"[*] 输出目录: {output_dir_path}")
+    logger.info("输出目录: %s", output_dir_path)
+    tmp_base_dir = pick_safe_tmp_dir(output_dir_path)
+    if tmp_base_dir != output_dir_path:
+        logger.info("使用临时目录写入: %s", tmp_base_dir)
 
     # 遍历QQ音乐下载目录中的文件
     processed_count = 0
     skipped_count = 0
+    failed_count = 0
 
     for entry in os.listdir(qq_music_dir):
         file_path = os.path.join(qq_music_dir, entry)
@@ -346,54 +402,79 @@ def Decryptor_main(input_dir="", output_dir="", del_original=False):
             base_name = os.path.splitext(entry)[0]
             new_file_name = base_name + "." + new_ext
             new_file_path = os.path.join(output_dir_path, new_file_name)
+            logger.info("开始处理文件: %s -> %s", file_path, new_file_path)
 
             # 跳过已存在的文件
             if os.path.exists(new_file_path):
 
-                print(f"[*] 文件已存在: {new_file_path} 跳过处理")
+                logger.info("文件已存在，跳过处理: %s", new_file_path)
                 # 如果开启删除原文件
                 if del_original:
                     try:
                         os.remove(file_path)
-                        print(f"[*] 已删除原文件: {file_path}")
+                        logger.info("已删除原文件: %s", file_path)
                     except Exception as e:
-                        print(f"[!] 删除原文件失败: {file_path}, {e}")
+                        logger.warning("删除原文件失败: %s, %s", file_path, e)
                 skipped_count += 1
                 continue
 
             # 生成MD5哈希作为临时文件名
             md5_hash = hashlib.md5(new_file_name.encode()).hexdigest()
-            tmp_file_path = os.path.join(output_dir_path, md5_hash)
+            tmp_file_path = os.path.join(tmp_base_dir, md5_hash)
 
             try:
                 # 调用解密器进行解密
                 success = decryptor.decrypt(file_path, tmp_file_path)
 
                 if success:
-                    # 重命名临时文件为最终文件名
-                    os.rename(tmp_file_path, new_file_path)
-                    print(f"[*] 处理文件: {new_file_path} 完成")
+                    # 将临时文件移动为最终文件名
+                    try:
+                        shutil.move(tmp_file_path, new_file_path)
+                        logger.info("处理文件完成: %s", new_file_path)
+                    except Exception as e:
+                        logger.error(
+                            "移动临时文件失败: %s -> %s, %s",
+                            tmp_file_path,
+                            new_file_path,
+                            e,
+                        )
+                        if os.path.exists(tmp_file_path):
+                            os.remove(tmp_file_path)
+                        failed_count += 1
+                        continue
 
                     # 如果开启删除原文件
                     if del_original:
                         try:
                             os.remove(file_path)
-                            print(f"[*] 已删除原文件: {file_path}")
+                            logger.info("已删除原文件: %s", file_path)
                         except Exception as e:
-                            print(f"[!] 删除原文件失败: {file_path}, {e}")
+                            logger.warning("删除原文件失败: %s, %s", file_path, e)
 
                     processed_count += 1
                 else:
-                    print(f"[!] 解密失败: {file_path}")
+                    logger.error("解密失败: %s", file_path)
+                    failed_count += 1
                     # 清理临时文件
                     if os.path.exists(tmp_file_path):
                         os.remove(tmp_file_path)
 
             except Exception as e:
-                print(f"[!] 处理文件失败 {file_path}: {e}")
+                logger.exception("处理文件失败: %s, %s", file_path, e)
+                failed_count += 1
                 # 清理临时文件
                 if os.path.exists(tmp_file_path):
                     os.remove(tmp_file_path)
 
-    print(f"\n[*] 处理完成！成功: {processed_count}, 跳过: {skipped_count}")
-    return True, f"成功处理 {processed_count} 个文件，跳过 {skipped_count} 个文件"
+    elapsed = time.perf_counter() - start_time
+    logger.info(
+        "处理完成！成功: %s, 跳过: %s, 失败: %s, 耗时: %.2f 秒",
+        processed_count,
+        skipped_count,
+        failed_count,
+        elapsed,
+    )
+    return (
+        True,
+        f"成功处理 {processed_count} 个文件，跳过 {skipped_count} 个文件，失败 {failed_count} 个文件",
+    )

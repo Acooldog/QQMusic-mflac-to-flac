@@ -2,11 +2,14 @@ name: Build and Release Python Application
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
+    tags:
+      - "v*"
+      - "V*"
+      - "*.*.*"
   pull_request:
-    branches: [ main, master ]
-  release:
-    types: [created]
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -14,121 +17,126 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-    
+
+    permissions:
+      contents: read
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    
-    - name: Build with PyInstaller
-      run: |
-        # 查找入口文件
-        if [ -f "main.py" ]; then
-          ENTRY_FILE="main.py"
-        elif [ -f "app.py" ]; then
-          ENTRY_FILE="app.py"
-        elif [ -f "run.py" ]; then
-          ENTRY_FILE="run.py"
-        else
-          # 查找第一个 .py 文件
-          ENTRY_FILE=$(ls *.py | head -1)
-        fi
-        
-        echo "Building from entry file: $ENTRY_FILE"
-        
-        # PyInstaller 构建命令
-        pyinstaller --onefile --noconsole --name "QQMusic-mflac-to-flac" "$ENTRY_FILE"
-    
-    - name: Create release package
-      run: |
-        # 创建发布目录
-        mkdir -p release
-        
-        # 创建包含可执行文件的文件夹结构
-        mkdir -p temp_release
-        copy dist\QQMusic-mflac-to-flac.exe temp_release\
-        
-        # 复制其他必要文件
-        if [ -f "README.md" ]; then copy README.md temp_release\; fi
-        if [ -f "LICENSE" ]; then copy LICENSE temp_release\; fi
-        
-        # 复制 plugins 文件夹（如果存在）
-        if [ -d "plugins" ]; then
-          xcopy /E /I plugins temp_release\plugins
-        fi
-        
-        # 创建压缩包
-        cd temp_release
-        7z a -tzip ..\release\QQMusic-mflac-to-flac.zip *
-        cd ..
-        
-        echo "Release package created: release/QQMusic-mflac-to-flac.zip"
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: windows-executable
-        path: |
-          dist/QQMusic-mflac-to-flac.exe
-          release/QQMusic-mflac-to-flac.zip
-        retention-days: 5
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          }
+          pip install pyinstaller
+
+      - name: Build with PyInstaller (onedir)
+        shell: pwsh
+        run: |
+          $entryFile = @("main.py", "app.py", "run.py") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $entryFile) {
+            $firstPy = Get-ChildItem -Filter *.py | Select-Object -First 1
+            if (-not $firstPy) {
+              throw "未找到 Python 入口文件"
+            }
+            $entryFile = $firstPy.Name
+          }
+
+          Write-Host "Building from entry file: $entryFile"
+          pyinstaller --clean --noconfirm --onedir --name "QQMusic-mflac-to-flac" "$entryFile"
+
+      - name: Create release package
+        shell: pwsh
+        run: |
+          $releaseDir = "release"
+          $distAppDir = "dist/QQMusic-mflac-to-flac"
+          $tempDir = "temp_release"
+
+          if (-not (Test-Path $distAppDir)) {
+            throw "构建目录不存在: $distAppDir"
+          }
+
+          if (Test-Path $releaseDir) {
+            Remove-Item $releaseDir -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $releaseDir | Out-Null
+
+          if (Test-Path $tempDir) {
+            Remove-Item $tempDir -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $tempDir | Out-Null
+
+          Copy-Item $distAppDir -Destination "$tempDir/QQMusic-mflac-to-flac" -Recurse -Force
+
+          if (Test-Path "README.md") {
+            Copy-Item "README.md" -Destination "$tempDir/README.md" -Force
+          }
+          if (Test-Path "LICENSE") {
+            Copy-Item "LICENSE" -Destination "$tempDir/LICENSE" -Force
+          }
+
+          Compress-Archive -Path "$tempDir/*" -DestinationPath "$releaseDir/QQMusic-mflac-to-flac.zip" -Force
+
+          Remove-Item $tempDir -Recurse -Force
+          Write-Host "Release package created: $releaseDir/QQMusic-mflac-to-flac.zip"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/QQMusic-mflac-to-flac/**
+            release/QQMusic-mflac-to-flac.zip
+          retention-days: 5
 
   release:
     needs: build-windows
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      contents: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Download Windows artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: windows-executable
-        path: ./artifacts
-    
-    - name: Create GitHub Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      with:
-        name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
-        files: |
-          artifacts/QQMusic-mflac-to-flac.exe
-          artifacts/QQMusic-mflac-to-flac.zip
-        body: |
-          # QQMusic mflac to flac Converter
-          
-          ## Windows 版本
-          
-          包含以下文件：
-          - `QQMusic-mflac-to-flac.exe` - 主程序
-          - `QQMusic-mflac-to-flac.zip` - 完整发布包
-          
-          ## 使用说明
-          
-          1. 下载 `QQMusic-mflac-to-flac.zip`
-          2. 解压到任意目录
-          3. 运行 `QQMusic-mflac-to-flac.exe`
-          
-          ## 特性
-          
-          - 无控制台窗口的单文件程序
-          - 自动识别 mflac 文件
-          - 批量转换支持
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/release/QQMusic-mflac-to-flac.zip
+          body: |
+            # QQMusic mflac to flac Converter
+
+            ## Windows 版本
+
+            包含以下文件：
+            - `QQMusic-mflac-to-flac.zip` - onedir 发布包（含 exe 与依赖文件夹）
+
+            ## 使用说明
+
+            1. 下载 `QQMusic-mflac-to-flac.zip`
+            2. 解压到任意目录
+            3. 进入 `QQMusic-mflac-to-flac` 目录
+            4. 运行 `QQMusic-mflac-to-flac.exe`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

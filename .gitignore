@@ -15,3 +15,6 @@ build/
 QQMusic-mflac-to-flac.spec
 horizon-repair-tool.spec
 release/
+测试/
+_log/
+plugins/plugins.json
