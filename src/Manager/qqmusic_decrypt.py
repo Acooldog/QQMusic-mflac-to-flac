@@ -3,9 +3,14 @@
 使用Frida调用QQMusicCommon.dll中的EncAndDesMediaFile类来解密加密音频文件
 """
 
+import logging
 import os
 import hashlib
+import tempfile
 import frida
+
+
+logger = logging.getLogger("qqmusic_decrypt.manager")
 
 
 class QQMusicDecryptor:
@@ -271,129 +276,99 @@ class QQMusicDecryptor:
             return False
 
 
-def Decryptor_main(input_dir="", output_dir="", del_original=False):
-    """主程序：解密QQ音乐下载的加密音频文件
-
-    Args:
-        input_dir: 输入目录（QQ音乐下载目录）
-        output_dir: 输出目录
-        del_original: 是否删除原始加密文件（.mflac/.mgg）
-    """
-    print(f"[*] 输入目录: {input_dir}")
-    print(f"[*] 输出目录: {output_dir}")
-    print(f"[*] 删除原文件: {del_original}")
-
-    # 获取Frida版本和本地设备
-    print(f"[*] Frida version: {frida.__version__}")
-    device_manager = frida.get_device_manager()
-    device = device_manager.get_local_device()
-    print(f"[*] Device name: {device.name}")
-
-    # 查找QQ音乐进程
+def is_ascii_path(path: str) -> bool:
     try:
-        processes = device.enumerate_processes()
-        qq_music_process = next(
-            (p for p in processes if "qqmusic" in p.name.lower()),
-            None
-        )
-        if not qq_music_process:
-            raise RuntimeError("请先启动QQ音乐")
+        path.encode("ascii")
+        return True
+    except UnicodeEncodeError:
+        return False
 
-        print(f"[*] 找到QQ音乐进程: PID={qq_music_process.pid}")
-    except Exception as e:
-        raise RuntimeError(f"查找QQ音乐进程失败: {e}")
 
-    # 附加到QQ音乐进程
-    session = device.attach(qq_music_process.pid)
+def pick_safe_tmp_dir(output_dir: str) -> str:
+    """Pick an ASCII-safe temp directory for Frida File writes."""
+    output_abs = os.path.abspath(output_dir)
+    candidates = []
 
-    # 初始化解密器（会自动查找并加载所需的函数）
-    try:
-        decryptor = QQMusicDecryptor(session)
-    except Exception as e:
-        print(f"[!] 初始化解密器失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return
+    drive, _ = os.path.splitdrive(output_abs)
+    if drive:
+        candidates.append(os.path.join(drive + "\\", "_qqmusic_tmp"))
 
-    # 构造QQ音乐下载目录路径
-    qq_music_dir = input_dir
+    candidates.append(os.path.join(os.getcwd(), "_qqmusic_tmp"))
+    candidates.append(tempfile.gettempdir())
 
-    if not os.path.exists(qq_music_dir):
-        raise RuntimeError(f"QQ音乐下载目录不存在: {qq_music_dir}")
-
-    print(f"[*] QQ音乐目录: {qq_music_dir}")
-
-    # 创建输出目录
-    output_dir_path = output_dir
-    if not os.path.exists(output_dir_path):
-        os.makedirs(output_dir_path)
-    print(f"[*] 输出目录: {output_dir_path}")
-
-    # 遍历QQ音乐下载目录中的文件
-    processed_count = 0
-    skipped_count = 0
-
-    for entry in os.listdir(qq_music_dir):
-        file_path = os.path.join(qq_music_dir, entry)
-        if not os.path.isfile(file_path):
+    for candidate in candidates:
+        if not candidate:
             continue
+        if not is_ascii_path(candidate):
+            logger.debug("跳过非 ASCII 临时目录候选: %s", candidate)
+            continue
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            return candidate
+        except Exception as exc:
+            logger.warning("临时目录不可用，尝试回退下一个候选: %s, %s", candidate, exc)
 
-        # 处理mflac和mgg文件
-        _, ext = os.path.splitext(entry)
-        if ext.lower() in [".mflac", ".mgg"]:
-            # 映射文件扩展名：mflac→flac, mgg→ogg
-            new_ext = "flac" if ext.lower() == ".mflac" else "ogg"
-            base_name = os.path.splitext(entry)[0]
-            new_file_name = base_name + "." + new_ext
-            new_file_path = os.path.join(output_dir_path, new_file_name)
+    logger.warning("未找到可用 ASCII 临时目录，回退输出目录: %s", output_abs)
+    return output_abs
 
-            # 跳过已存在的文件
-            if os.path.exists(new_file_path):
 
-                print(f"[*] 文件已存在: {new_file_path} 跳过处理")
-                # 如果开启删除原文件
-                if del_original:
-                    try:
-                        os.remove(file_path)
-                        print(f"[*] 已删除原文件: {file_path}")
-                    except Exception as e:
-                        print(f"[!] 删除原文件失败: {file_path}, {e}")
-                skipped_count += 1
-                continue
+def Decryptor_main(input_dir="", output_dir="", del_original=False):
+    """Compatibility entry that delegates orchestration to application services."""
+    from src.Application.config_service import ConfigService
+    from src.Application.decrypt_job_service import DecryptJobService
+    from src.Application.format_policy_service import FormatPolicyService
+    from src.Helper.runtime_logging import get_plugins_config_path
+    from src.Infrastructure.ffmpeg_transcoder import FfmpegTranscoder
+    from src.Infrastructure.filesystem_adapter import FileSystemAdapter
+    from src.Infrastructure.frida_decrypt_gateway import FridaDecryptGateway
+    from src.Infrastructure.local_config_repository import LocalConfigRepository
 
-            # 生成MD5哈希作为临时文件名
-            md5_hash = hashlib.md5(new_file_name.encode()).hexdigest()
-            tmp_file_path = os.path.join(output_dir_path, md5_hash)
+    logger.info("=" * 50)
+    logger.info("开始解密任务")
+    logger.info("=" * 50)
 
-            try:
-                # 调用解密器进行解密
-                success = decryptor.decrypt(file_path, tmp_file_path)
+    policy = FormatPolicyService()
+    config_repo = LocalConfigRepository(get_plugins_config_path())
+    config_service = ConfigService(config_repo, policy)
+    settings = config_service.load()
 
-                if success:
-                    # 重命名临时文件为最终文件名
-                    os.rename(tmp_file_path, new_file_path)
-                    print(f"[*] 处理文件: {new_file_path} 完成")
+    effective_input = input_dir or settings.get("input", "")
+    effective_output = output_dir or settings.get("output", "")
+    format_rules = settings.get("format_rules", policy.DEFAULT_RULES)
 
-                    # 如果开启删除原文件
-                    if del_original:
-                        try:
-                            os.remove(file_path)
-                            print(f"[*] 已删除原文件: {file_path}")
-                        except Exception as e:
-                            print(f"[!] 删除原文件失败: {file_path}, {e}")
+    if not effective_input:
+        return False, "输入目录为空"
+    if not effective_output:
+        return False, "输出目录为空"
 
-                    processed_count += 1
-                else:
-                    print(f"[!] 解密失败: {file_path}")
-                    # 清理临时文件
-                    if os.path.exists(tmp_file_path):
-                        os.remove(tmp_file_path)
+    logger.info("输入目录: %s", effective_input)
+    logger.info("输出目录: %s", effective_output)
+    logger.info("删除原始文件: %s", del_original)
 
-            except Exception as e:
-                print(f"[!] 处理文件失败 {file_path}: {e}")
-                # 清理临时文件
-                if os.path.exists(tmp_file_path):
-                    os.remove(tmp_file_path)
+    decrypt_gateway = FridaDecryptGateway()
+    transcoder = FfmpegTranscoder()
+    fs_adapter = FileSystemAdapter()
+    job_service = DecryptJobService(
+        decrypt_gateway=decrypt_gateway,
+        transcoder=transcoder,
+        fs_adapter=fs_adapter,
+        format_policy=policy,
+    )
 
-    print(f"\n[*] 处理完成！成功: {processed_count}, 跳过: {skipped_count}")
-    return True, f"成功处理 {processed_count} 个文件，跳过 {skipped_count} 个文件"
+    need_transcode = job_service.requires_transcode(effective_input, format_rules)
+    on_ffmpeg_missing = None
+    if need_transcode and not transcoder.available:
+        logger.warning("检测到需要转码但 FFmpeg 不可用，本次任务回退为仅解密")
+        on_ffmpeg_missing = lambda: "decrypt_only"
+
+    try:
+        return job_service.run(
+            input_dir=effective_input,
+            output_dir=effective_output,
+            del_original=del_original,
+            format_rules=format_rules,
+            on_ffmpeg_missing=on_ffmpeg_missing,
+        )
+    except Exception as exc:
+        logger.exception("解密流程失败")
+        return False, f"解密流程失败: {exc}"
