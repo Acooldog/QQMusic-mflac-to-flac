@@ -2,7 +2,7 @@ name: Build and Release Python Application
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, master-console]
     tags:
       - "v*"
       - "V*"
