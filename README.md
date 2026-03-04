@@ -318,7 +318,9 @@ A: 可能是QQ音乐版本更新了DLL，程序会列出所有相关导出函数
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE) 开源协议。
+本项目采用双重开源协议。
+控制台分支[MIT License](LICENSE)协议
+图形化分支也就是master分支采用[GPL v3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)协议
 
 ## Star History
 
