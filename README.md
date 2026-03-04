@@ -29,8 +29,10 @@
 - develop: 开发分支，用于新功能开发, 采用[GPLv3](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master/LICENSE)开源协议
 
 ## 用户指南
-- 要使用PyQt5图形化界面，请在发行版下载QQMusic-mflac-to-flac.zip
-- 要使用命令行，请在发行版下载QQMusic-mflac-to-flac-console.zip
+- 推荐普通用户直接下载发行版 `QQMusic-mflac-to-flac.zip`
+- 解压后进入 `QQMusic-mflac-to-flac` 目录，直接运行 `QQMusic-mflac-to-flac.exe`
+- 相比手动输入 CLI 参数，直接调用 exe 交互模式更省事，且会自动保存路径配置
+- 开发者或脚本集成场景再使用 `python main.py` 命令行参数模式
 
 ## 功能特性
 
@@ -75,7 +77,11 @@
 
 4. **运行程序**
    ```bash
-   # 交互式模式（推荐首次使用）
+   # 发行版（推荐）
+   # 解压 QQMusic-mflac-to-flac.zip 后，直接运行：
+   QQMusic-mflac-to-flac\QQMusic-mflac-to-flac.exe
+
+   # 源码交互式模式（推荐首次使用）
    python main.py
 
    # 命令行模式
@@ -92,7 +98,7 @@
 
 ## 使用方法
 
-### 方式一：交互式模式（推荐首次使用）
+### 方式一：交互式模式（推荐普通用户）
 
 1. **确保QQ音乐正在运行**
    - 启动QQ音乐客户端
@@ -100,6 +106,10 @@
 
 2. **运行解密程序**
    ```bash
+   # 发行版（推荐）
+   QQMusic-mflac-to-flac\QQMusic-mflac-to-flac.exe
+
+   # 源码运行
    python main.py
    ```
 
@@ -146,6 +156,12 @@ python main.py --help
 - 程序会在当前运行目录自动创建 `_log/<YYYY-M-D>/` 目录
 - 每次运行会生成一个独立日志文件，例如：`_log/2026-3-4/run_14-22-31_pid3468.log`
 - 日志会同时输出到终端和日志文件，方便排查问题与提交 GitHub issue
+
+### 自动发布说明
+
+- 当前仓库在 `master` 与 `master-console` 分支每次 `push commit` 会自动触发 GitHub Actions 构建并发布
+- 自动发布产物为 `QQMusic-mflac-to-flac.zip`（包含 `QQMusic-mflac-to-flac.exe` 与依赖文件夹）
+- 自动发布默认标记为预发布（pre-release），便于持续迭代验证
 
 ## 目录结构
 

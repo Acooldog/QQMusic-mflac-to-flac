@@ -2,13 +2,9 @@ name: Build and Release Python Application
 
 on:
   push:
-    branches: [main, master, master-console]
-    tags:
-      - "v*"
-      - "V*"
-      - "*.*.*"
+    branches: [master, master-console]
   pull_request:
-    branches: [main, master]
+    branches: [master, master-console]
   workflow_dispatch:
 
 jobs:
@@ -103,7 +99,7 @@ jobs:
   release:
     needs: build-windows
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && (github.ref_name == 'master' || github.ref_name == 'master-console')
 
     permissions:
       contents: write
@@ -115,13 +111,25 @@ jobs:
           name: windows-build
           path: artifacts
 
+      - name: Generate release metadata
+        id: meta
+        run: |
+          BRANCH="${GITHUB_REF_NAME//\//-}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          TAG="auto-${BRANCH}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${SHORT_SHA}"
+          TITLE="Auto Release ${GITHUB_REF_NAME} #${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT} (${SHORT_SHA})"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          target_commitish: ${{ github.sha }}
           draft: false
-          prerelease: false
+          prerelease: true
+          make_latest: false
           files: |
             artifacts/release/QQMusic-mflac-to-flac.zip
           body: |
@@ -131,6 +139,8 @@ jobs:
 
             包含以下文件：
             - `QQMusic-mflac-to-flac.zip` - onedir 发布包（含 exe 与依赖文件夹）
+            - 分支：`${{ github.ref_name }}`
+            - 提交：`${{ github.sha }}`
 
             ## 使用说明
 
