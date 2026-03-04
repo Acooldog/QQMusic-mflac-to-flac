@@ -1,21 +1,20 @@
-name: Build and Release Python Application
+name: Build and Release
 
 on:
   push:
     branches: [master, master-console]
-  pull_request:
-    branches: [master, master-console]
   workflow_dispatch:
 
-jobs:
-  build-windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ["3.11"]
+permissions:
+  contents: write
 
-    permissions:
-      contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -23,12 +22,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
@@ -83,70 +87,21 @@ jobs:
           }
 
           Compress-Archive -Path "$tempDir/*" -DestinationPath "$releaseDir/QQMusic-mflac-to-flac.zip" -Force
-
           Remove-Item $tempDir -Recurse -Force
-          Write-Host "Release package created: $releaseDir/QQMusic-mflac-to-flac.zip"
 
-      - name: Upload build artifacts
+      - name: Upload CI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: |
-            dist/QQMusic-mflac-to-flac/**
-            release/QQMusic-mflac-to-flac.zip
+          name: windows-build-${{ github.sha }}
+          path: release/QQMusic-mflac-to-flac.zip
           retention-days: 5
 
-  release:
-    needs: build-windows
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref_name == 'master' || github.ref_name == 'master-console')
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: artifacts
-
-      - name: Generate release metadata
-        id: meta
+      - name: Install semantic-release dependencies
+        shell: pwsh
         run: |
-          BRANCH="${GITHUB_REF_NAME//\//-}"
-          SHORT_SHA="${GITHUB_SHA::7}"
-          TAG="auto-${BRANCH}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${SHORT_SHA}"
-          TITLE="Auto Release ${GITHUB_REF_NAME} #${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT} (${SHORT_SHA})"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+          npm install --no-save semantic-release@24 @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/github conventional-changelog-conventionalcommits
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.title }}
-          target_commitish: ${{ github.sha }}
-          draft: false
-          prerelease: true
-          make_latest: false
-          files: |
-            artifacts/release/QQMusic-mflac-to-flac.zip
-          body: |
-            # QQMusic mflac to flac Converter
-
-            ## Windows 版本
-
-            包含以下文件：
-            - `QQMusic-mflac-to-flac.zip` - onedir 发布包（含 exe 与依赖文件夹）
-            - 分支：`${{ github.ref_name }}`
-            - 提交：`${{ github.sha }}`
-
-            ## 使用说明
-
-            1. 下载 `QQMusic-mflac-to-flac.zip`
-            2. 解压到任意目录
-            3. 进入 `QQMusic-mflac-to-flac` 目录
-            4. 运行 `QQMusic-mflac-to-flac.exe`
+      - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

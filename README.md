@@ -159,9 +159,13 @@ python main.py --help
 
 ### 自动发布说明
 
-- 当前仓库在 `master` 与 `master-console` 分支每次 `push commit` 会自动触发 GitHub Actions 构建并发布
+- 当前仓库在 `master` 与 `master-console` 分支每次 `push commit` 会自动触发 GitHub Actions
+- 发布流程使用 `semantic-release`，会根据提交信息自动计算版本并创建标签（例如 `v1.0.1`）
 - 自动发布产物为 `QQMusic-mflac-to-flac.zip`（包含 `QQMusic-mflac-to-flac.exe` 与依赖文件夹）
-- 自动发布默认标记为预发布（pre-release），便于持续迭代验证
+- Release Notes 会按提交类型自动分组（例如 `Bug Fixes`）
+- 推荐使用 Conventional Commits，例如：
+  - `fix: 修复中文路径下报错问题`
+  - `feat: 增加日志导出功能`
 
 ## 目录结构
 
