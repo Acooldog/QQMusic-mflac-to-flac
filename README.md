@@ -24,7 +24,7 @@
 如果帮助到了你，可以去[github](https://github.com/Acooldog/QQMusic-mflac-to-flac)帮我点一个star吗？万分感谢！
 
 ## 教程视频
-<iframe src="https://player.bilibili.com/player.html?isOutside=true&aid=116175862238229&bvid=BV1aRPCzuELn&cid=36472097399&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" width="100%" height="100%"></iframe>
+[【工具】QQ音乐解密mflac教程](https://www.bilibili.com/video/BV1aRPCzuELn/?share_source=copy_web&vd_source=f447c8bfbd4e18e776bf5087c3a430e2)
 
 ## 分支说明
 - master-console: 命令行分支，采用[MIT](https://github.com/Acooldog/QQMusic-mflac-to-flac/blob/master-console/LICENSE)开源协议
