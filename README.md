@@ -8,6 +8,8 @@
 
 自动解密QQ音乐下载的加密音频文件，支持将 mflac/mgg/mmp4 转换为可播放音频格式。
 
+> 注意：本项目已弃用，后期不再进行维护，作者目前只维护最新的，可以解析QQ音乐、酷狗音乐以及酷我音乐的加密文件的工具：［QKK］（https://github.com/Acooldog/QQKWKG-TriMusicDecrypt）
+
 ---
 
 本项目是[qqmusic_decrypt](https://github.com/luyikk/qqmusic_decrypt)的python重写版本，感谢原作者提供的动态插桩思路以及导出函数
