@@ -20,6 +20,7 @@ from src.Helper.runtime_logging import (
 from src.Infrastructure.ffmpeg_transcoder import FfmpegTranscoder
 from src.Infrastructure.filesystem_adapter import FileSystemAdapter
 from src.Infrastructure.frida_decrypt_gateway import FridaDecryptGateway
+from src.Infrastructure.cover_art_service import CoverArtService
 from src.Infrastructure.local_config_repository import LocalConfigRepository
 
 
@@ -65,6 +66,7 @@ def create_context(config_path: str):
     config_service.save(settings)
 
     transcoder = FfmpegTranscoder()
+    cover_cache_dir = os.path.join(os.path.dirname(config_path), "cover_cache")
     if transcoder.available:
         logger.info("FFmpeg 检测结果: 可用")
         if transcoder.version_text:
@@ -77,6 +79,7 @@ def create_context(config_path: str):
         transcoder=transcoder,
         fs_adapter=FileSystemAdapter(),
         format_policy=policy,
+        cover_art_service=CoverArtService(cover_cache_dir),
     )
     return policy, config_service, settings, transcoder, decrypt_service
 
