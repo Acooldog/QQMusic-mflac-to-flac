@@ -1,19 +1,17 @@
 {
-    "input": "C:/Users/01080/Music/VipSongsDownload",
-    "output": "O:/A_python/A_QQd/测试",
+    "input": "",
+    "output": "",
     "del": false,
     "wheel": false,
     "format_rules": {
-        "mflac": "m4a",
-        "mgg": "wav",
-        "mmp4": "flac"
+        "mflac": "flac",
+        "mgg": "m4a",
+        "mmp4": "m4a"
     },
     "format_whitelist": [
-        "aac",
         "flac",
         "m4a",
         "mp3",
-        "ogg",
         "wav"
     ]
 }

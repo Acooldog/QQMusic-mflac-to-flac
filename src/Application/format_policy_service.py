@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from typing import Dict, List
 
 
@@ -6,15 +6,20 @@ logger = logging.getLogger("qqmusic_decrypt.application.format_policy")
 
 
 class FormatPolicyService:
-    """Manage source format support and output format normalization."""
+    """Manage source format support, raw decrypt containers and final output normalization."""
 
     DEFAULT_RULES = {
+        "mflac": "flac",
+        "mgg": "m4a",
+        "mmp4": "m4a",
+    }
+    RAW_CONTAINER_RULES = {
         "mflac": "flac",
         "mgg": "ogg",
         "mmp4": "m4a",
     }
-    FORMAT_WHITELIST = {"flac", "ogg", "m4a", "aac", "mp3", "wav"}
-    ALIASES = {"acc": "aac"}
+    FORMAT_WHITELIST = {"flac", "m4a", "mp3", "wav"}
+    ALIASES = {"acc": "m4a", "aac": "m4a"}
 
     def normalize_format(self, fmt: str) -> str:
         value = (fmt or "").strip().lower().lstrip(".")
@@ -31,6 +36,9 @@ class FormatPolicyService:
     def default_format(self, src_ext: str) -> str:
         return self.DEFAULT_RULES.get(self.normalize_source_ext(src_ext), "")
 
+    def raw_decrypt_format(self, src_ext: str) -> str:
+        return self.RAW_CONTAINER_RULES.get(self.normalize_source_ext(src_ext), "")
+
     def target_format(self, src_ext: str, rules: Dict[str, str]) -> str:
         key = self.normalize_source_ext(src_ext)
         target = self.normalize_format((rules or {}).get(key, ""))
@@ -42,7 +50,7 @@ class FormatPolicyService:
         return self.normalize_source_ext(src_ext) in self.DEFAULT_RULES
 
     def needs_transcode(self, src_ext: str, target_fmt: str) -> bool:
-        return self.default_format(src_ext) != self.normalize_format(target_fmt)
+        return self.raw_decrypt_format(src_ext) != self.normalize_format(target_fmt)
 
     def normalize_rules(self, rules: Dict[str, str]) -> Dict[str, str]:
         source = rules if isinstance(rules, dict) else {}
