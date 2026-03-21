@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import time
 from typing import Callable, Dict, Optional, Tuple
 
@@ -8,6 +9,7 @@ from src.Infrastructure.cover_art_service import CoverArtService
 from src.Infrastructure.ffmpeg_transcoder import FfmpegTranscoder
 from src.Infrastructure.filesystem_adapter import FileSystemAdapter
 from src.Infrastructure.frida_decrypt_gateway import FridaDecryptGateway
+from src.Infrastructure.qq_variant_adapter_service import QQVariantAdapterService
 
 
 logger = logging.getLogger("qqmusic_decrypt.application.decrypt_job")
@@ -23,12 +25,14 @@ class DecryptJobService:
         fs_adapter: FileSystemAdapter,
         format_policy: FormatPolicyService,
         cover_art_service: CoverArtService,
+        qq_variant_adapter: QQVariantAdapterService | None = None,
     ):
         self.decrypt_gateway = decrypt_gateway
         self.transcoder = transcoder
         self.fs = fs_adapter
         self.policy = format_policy
         self.cover_art = cover_art_service
+        self.qq_variant_adapter = qq_variant_adapter or QQVariantAdapterService()
 
     @staticmethod
     def _summary_text(summary: Dict[str, object]) -> str:
@@ -116,12 +120,30 @@ class DecryptJobService:
             transcode_tmp_path = ""
 
             try:
-                success = self.decrypt_gateway.decrypt_file(file_path, decrypt_tmp_path)
+                decrypt_error = None
+                decrypt_src_tmp_path = ""
+                try:
+                    variant_result = self.qq_variant_adapter.prepare_legacy_compatible_input(file_path, tmp_base_dir)
+                    decrypt_src_tmp_path = variant_result.staged_path
+                    logger.info(
+                        "QQ variant adaptation engaged: %s | mode=%s staged=%s",
+                        file_path,
+                        variant_result.mode,
+                        decrypt_src_tmp_path,
+                    )
+                    success = self.decrypt_gateway.decrypt_file(decrypt_src_tmp_path, decrypt_tmp_path)
+                except Exception as exc:
+                    decrypt_error = exc
+                    logger.warning("Decrypt gateway raised: %s | %s", file_path, exc)
+                    success = False
                 if not success:
+                    self.fs.remove_file(decrypt_src_tmp_path)
                     logger.error("Decrypt step failed: %s", file_path)
                     failed_count += 1
                     self.fs.remove_file(decrypt_tmp_path)
                     continue
+                else:
+                    self.fs.remove_file(decrypt_src_tmp_path)
 
                 detected_container, recognition_stage = self.transcoder.detect_audio_container(decrypt_tmp_path)
                 decrypt_summary = self.transcoder.probe_media_summary(decrypt_tmp_path)
@@ -241,6 +263,7 @@ class DecryptJobService:
             except Exception as exc:
                 logger.exception("Processing failed: %s, %s", file_path, exc)
                 failed_count += 1
+                self.fs.remove_file(decrypt_src_tmp_path)
                 self.fs.remove_file(decrypt_tmp_path)
                 if transcode_tmp_path:
                     self.fs.remove_file(transcode_tmp_path)
